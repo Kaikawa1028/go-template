@@ -1,0 +1,8 @@
+/web/tmp
+coverage.*
+.idea
+web/app
+.env
+.env.integration
+*_mock.go
+*wire_gen.go

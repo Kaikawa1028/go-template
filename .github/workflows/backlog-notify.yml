@@ -1,0 +1,27 @@
+# name: Backlog Notify
+
+# on: push
+
+# jobs:
+#   notify:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Backlog Notify
+#         uses: bicstone/backlog-notify@v3
+#         with:
+#           # The following are required settings
+#           project_key: CANLY 
+#           api_host: canly.backlog.com
+#           api_key: ${{ secrets.BACKLOG_API_KEY }}
+#           push_comment_template: |-
+#             <%= commits[0].author.name %>さんが[<%= ref.name %>](<%= ref.url %>)にプッシュしました
+#             <% commits.forEach(commit=>{ %>
+#             + <%= commit.comment %> ([<% print(commit.id.slice(0, 7)) %>](<%= commit.url %>))<% }); %>
+#           commit_message_reg_template: "\
+#             ^\
+#             (<%= projectKey %>\\-\\d+)\\s?\
+#             (.*?)?\\s?\
+#             (<% print(fixKeywords.join('|')) %>|<% print(closeKeywords.join('|')) %>)?\
+#             $\
+#             "

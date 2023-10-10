@@ -1,0 +1,210 @@
+{
+  "family": "${DEPLOY_ENV}-${SERVICE_NAME}-api",
+  "executionRoleArn": "arn:aws:iam::${ACCOUNT_ID}:role/${DEPLOY_ENV}-${SERVICE_NAME}-ecs-task-execution-api",
+  "taskRoleArn": "arn:aws:iam::${ACCOUNT_ID}:role/${DEPLOY_ENV}-${SERVICE_NAME}-ecs-task",
+  "cpu": "1024",
+  "memory": "5120",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${DEPLOY_ENV}-${SERVICE_NAME}-api:${IMAGE_TAG}",
+      "essential": true,
+      "cpu": 512,
+      "memoryReservation": 4096,
+      "logConfiguration": {
+        "logDriver": "awsfirelens",
+        "options": {
+          "Name": "datadog",
+          "Host": "http-intake.logs.datadoghq.com",
+          "dd_service": "${DEPLOY_ENV}-${SERVICE_NAME}-api",
+          "dd_source": "go",
+          "dd_message_key": "log",
+          "dd_tags": "environment:${DEPLOY_ENV},servicename:canlyhp-cms,customer:common,function:mgt-api",
+          "provider": "ecs"
+        },
+        "secretOptions": [{
+          "name": "apikey",
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${ACCOUNT_ID}:parameter/${SERVICE_NAME}/${DEPLOY_ENV}/DD_API_KEY"
+        }]
+      },
+      "portMappings": [
+        {
+          "protocol": "tcp",
+          "hostPort": 3000,
+          "containerPort": 3000
+        }
+      ],
+      "environment": [
+        {
+          "name": "TZ",
+          "value": "Asia/Tokyo"
+        }
+      ],
+      "secrets": [
+        {
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:/${SERVICE_NAME}/${DEPLOY_ENV}/${DATABASE_CONFIG_NAME}:user::",
+          "name": "MYSQL_USER"
+        },
+        {
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:/${SERVICE_NAME}/${DEPLOY_ENV}/${DATABASE_CONFIG_NAME}:password::",
+          "name": "MYSQL_PASSWORD"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/db_host",
+          "name": "MYSQL_HOST"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/db_port",
+          "name": "MYSQL_PORT"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/db_database",
+          "name": "MYSQL_DATABASE"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/allow_origin",
+          "name": "ALLOW_ORIGIN"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/enc_key",
+          "name": "ENC_KEY"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/enc_iv",
+          "name": "ENC_IV"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/aws_region",
+          "name": "AWS_REGION"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/app_env",
+          "name": "AWS_ENV"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/log_level",
+          "name": "LOG_LEVEL"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/app_env",
+          "name": "APP_ENV"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/google_client_id",
+          "name": "GOOGLE_CLIENT_ID"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/google_client_secret",
+          "name": "GOOGLE_CLIENT_SECRET"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/google_account_id",
+          "name": "GOOGLE_ACCOUNT_ID"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/google_refresh_token",
+          "name": "GOOGLE_REFRESH_TOKEN"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/session_time",
+          "name":"SESSION_TIME"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/renewal_url",
+          "name": "APP_URL"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/meo_cloud_url",
+          "name": "MEO_CLOUD_URL"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/aws_ses_region",
+          "name": "AWS_SES_REGION"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/mail_service",
+          "name": "MAIL_DRIVER"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/mail_from_address",
+          "name": "MAIL_FROM_ADDRESS"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/mail_from_name",
+          "name": "MAIL_FROM_NAME"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/mailhog_host",
+          "name": "MAILHOG_HOST"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/mailhog_port",
+          "name": "MAILHOG_PORT"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/sendgrid_api_key",
+          "name": "SENDGRID_API_KEY"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/upload_s3_bucket",
+          "name": "S3_BUCKET"
+        },
+        {
+          "valueFrom": "/${SERVICE_NAME}/${DEPLOY_ENV}/geocoding_api_key",
+          "name": "GEOCODING_API_KEY"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": []
+    },
+    {
+      "name": "datadog",
+      "image": "datadog/agent:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "protocol": "tcp",
+          "hostPort": 8192,
+          "containerPort": 8192
+        }
+      ],
+      "secrets": [
+        {
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${ACCOUNT_ID}:parameter/${SERVICE_NAME}/${DEPLOY_ENV}/DD_API_KEY",
+          "name": "DD_API_KEY"
+        }
+      ],
+      "environment": [
+        {
+          "name": "ECS_FARGATE",
+          "value": "true"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": []
+    },
+    {
+      "name": "log-router",
+      "image": "amazon/aws-for-fluent-bit:stable",
+      "essential": true,
+      "firelensConfiguration": {
+        "type": "fluentbit",
+        "options": {
+          "config-file-type": "file",
+          "config-file-value": "/fluent-bit/configs/parse-json.conf",
+          "enable-ecs-log-metadata": "true"
+        }
+      },
+      "secrets": [
+        {
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${ACCOUNT_ID}:parameter/${SERVICE_NAME}/${DEPLOY_ENV}/DD_API_KEY",
+          "name": "DD_API_KEY"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": []
+    }
+  ]
+}

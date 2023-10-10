@@ -1,0 +1,12 @@
+{
+  "go.buildTags": "integration,wireinject",
+  "go.testTags": "integration",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[go]": {
+    "editor.defaultFormatter": "golang.go"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+}

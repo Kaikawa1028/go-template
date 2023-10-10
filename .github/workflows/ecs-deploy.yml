@@ -1,0 +1,90 @@
+# name: ecs-deploy
+# on:
+#   workflow_dispatch:
+#   push:
+#     branches:
+#       - 'master'
+#       - 'staging'
+#       - 'demonstration'
+#       - 'production'
+#       - 'v**'
+# env:
+#   AWS_REGION: ap-northeast-1
+#   AWS_DEFAULT_REGION: ap-northeast-1
+#   ACCOUNT_ID: 847228902403
+#   SERVICE_NAME: canly
+#   DATABASE_CONFIG_NAME:
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 30
+#     permissions:
+#       id-token: write
+#       contents: read
+#     steps:
+#       # NOTE: pushされたブランチによってENVを切り替える
+#       - name: if prod
+#         id: is_production
+#         if: ${{ !env.ACT && startsWith(github.ref, 'refs/heads/production') }}
+#         run: echo "DEPLOY_ENV=production" >> $GITHUB_ENV
+#       - name: else if demo
+#         id: is_demonstration
+#         if: ${{ !env.ACT && steps.is_production.conclusion == 'skipped' && startsWith(github.ref , 'refs/heads/demonstration') }}
+#         run: echo "DEPLOY_ENV=demo" >> $GITHUB_ENV
+#       - name: else if stg
+#         id: is_staging
+#         if: ${{ !env.ACT && steps.is_production.conclusion == 'skipped' && steps.is_demonstration.conclusion == 'skipped' && startsWith(github.ref , 'refs/heads/staging') }}
+#         run: echo "DEPLOY_ENV=staging" >> $GITHUB_ENV
+#       - name: else develop
+#         if: ${{ !env.ACT && steps.is_production.conclusion == 'skipped' && steps.is_demonstration.conclusion == 'skipped' && steps.is_staging.conclusion == 'skipped' }}
+#         run: echo "DEPLOY_ENV=develop" >> $GITHUB_ENV
+#       - name: set environment variables
+#         run: |
+#           if [ "$DEPLOY_ENV" = "production" ] ; then
+#             echo "ACCOUNT_ID=807480838192" >> $GITHUB_ENV
+#             echo "DATABASE_CONFIG_NAME=DatabaseConfig-hI0KB7" >> $GITHUB_ENV
+#           elif [ "$DEPLOY_ENV" = "demo" ] ; then
+#             echo "ACCOUNT_ID=655535252211" >> $GITHUB_ENV
+#             echo "DATABASE_CONFIG_NAME=DatabaseConfig-d0JmEi" >> $GITHUB_ENV
+#           elif [ "$DEPLOY_ENV" = "staging" ] ; then
+#             echo "ACCOUNT_ID=095283052727" >> $GITHUB_ENV
+#             echo "DATABASE_CONFIG_NAME=DatabaseConfig-bOpHti" >> $GITHUB_ENV
+#           else 
+#             echo "ACCOUNT_ID=847228902403" >> $GITHUB_ENV
+#             echo "DATABASE_CONFIG_NAME=DatabaseConfig-qk7GHP" >> $GITHUB_ENV
+#           fi
+#           echo "ECR_REPOSITORY=$DEPLOY_ENV-$SERVICE_NAME-api" >> $GITHUB_ENV
+#       - name: set common environment variables
+#         run: |
+#           echo "AWS_ROLE_ARN=arn:aws:iam::${ACCOUNT_ID}:role/github-actions" >> $GITHUB_ENV
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v1
+#         with:
+#           role-to-assume: ${{ env.AWS_ROLE_ARN }}
+#           aws-region: ${{ env.AWS_REGION }}
+#       - uses: actions/checkout@v2
+#         with:
+#           persist-credentials: false
+#       - name: Login to ECR
+#         id: login-ecr
+#         uses: aws-actions/amazon-ecr-login@v1
+#       - name: Build image and push image to Amazon ECR
+#         env:
+#           REPOSITORY_URI: ${{ steps.login-ecr.outputs.registry }}
+#           IMAGE_TAG: ${{ github.sha }}
+#           DOCKER_BUILDKIT: 1
+#         run: |
+#           docker build -t $REPOSITORY_URI/$ECR_REPOSITORY:latest ./web/
+#           docker tag $REPOSITORY_URI/$ECR_REPOSITORY:latest $REPOSITORY_URI/$ECR_REPOSITORY:$IMAGE_TAG
+#           docker push $REPOSITORY_URI/$ECR_REPOSITORY:latest
+#           docker push $REPOSITORY_URI/$ECR_REPOSITORY:$IMAGE_TAG
+#       - name: Fill in the new image ID in the Amazon ECS task definition
+#         env:
+#           IMAGE_TAG: ${{ github.sha }}
+#         run: envsubst < ./taskdefinition.template.json > taskdef.json && cat taskdef.json
+#       - name: Deploy Amazon ECS task definition
+#         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+#         with:
+#           task-definition: taskdef.json
+#           service: ${{ env.DEPLOY_ENV }}-${{ env.SERVICE_NAME }}-api
+#           cluster: ${{ env.DEPLOY_ENV }}-${{ env.SERVICE_NAME }}-api

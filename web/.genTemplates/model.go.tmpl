@@ -1,0 +1,16 @@
+package {{.modelPackageName}}
+
+import (
+    "database/sql"
+    "time"
+)
+
+type {{singular .StructName}} struct {
+    {{range .TableInfo.Fields}}{{.}}
+    {{end}}
+}
+
+// TableName sets the insert table name for this struct type
+func ({{.ShortStructName}} *{{singular .StructName}}) TableName() string {
+	return "{{.TableName}}"
+}

@@ -1,0 +1,16 @@
+# name: Labeler-Release
+# on:
+#   pull_request:
+# jobs:
+#   label:
+#     runs-on: ubuntu-latest
+#     if: github.head_ref == 'main' || github.head_ref == 'master' || github.head_ref == 'staging' || github.head_ref == 'production'
+#     permissions:
+#       contents: read
+#       pull-requests: write
+
+#     steps:
+#     - uses: actions/labeler@v4
+#       with:
+#         repo-token: "${{ secrets.GITHUB_TOKEN }}"
+#         configuration-path: ".github/labeler-release.yml"

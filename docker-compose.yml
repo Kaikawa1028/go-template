@@ -1,0 +1,14 @@
+version: "3.7"
+
+services:
+  web:
+    build:
+      context: ./web
+      target: dev
+    ports:
+      - 3008:3000
+      - 2349:2345 # リモートデバッグ用のポート(主にGoLandで使用)
+    volumes:
+      - ./:/src
+    privileged: true # 付けないとデバッガ(dlv)が動作しない
+    command: /bin/bash /src/web/tools/await_mysql_startup.sh db root root air -d

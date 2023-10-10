@@ -1,0 +1,110 @@
+# name: go-test
+# on:
+#   pull_request:
+#     types: [opened, synchronize]
+#   workflow_dispatch:
+
+# jobs:
+#   integration-test:
+#     name: Integration Test
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 10
+#     services:
+#       mysql:
+#         image: mysql:5.7
+#         env:
+#           MYSQL_DATABASE: meo_api_testing
+#           MYSQL_ROOT_PASSWORD: root
+#           MYSQL_ALLOW_EMPTY_PASSWORD: yes
+#         ports:
+#           - 3306:3306
+#         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+#     steps:
+#       # MySQLのSQLモードをローカルと合わせる
+#       - name: set MySQL sql_mode
+#         run: |
+#           mysql --ssl-mode=DISABLE --protocol=tcp --host 127.0.0.1 --user=root --password=root mysql <<SQL
+#           SET GLOBAL sql_mode = 'NO_ENGINE_SUBSTITUTION';
+#           SQL
+#       # DBの構築（canlyのマイグレーションを実行）
+#       - name: Checkout Canly (from feature/brandTemplates branch)
+#         uses: actions/checkout@v2
+#         if: github.base_ref == 'feature/brandTemplates' # feature/brandTemplates宛てのPRのみ
+#         with:
+#           repository: leretto-inc/canly
+#           path: canly
+#           ref: "cms/feature/brandTemplates"
+#           ssh-key: ${{ secrets.PRIVATE_KEY_FOR_INTEGRATION_TEST }}
+#       - name: Checkout Canly
+#         uses: actions/checkout@v2
+#         if: github.base_ref != 'feature/brandTemplates' # feature/brandTemplates宛て以外のPR
+#         with:
+#           repository: leretto-inc/canly
+#           path: canly
+#           ref: "cms/cms_dev"
+#           ssh-key: ${{ secrets.PRIVATE_KEY_FOR_INTEGRATION_TEST }}
+#       - name: Setup PHP
+#         uses: shivammathur/setup-php@v2
+#         with:
+#           php-version: 7.2
+#           tools: composer:v1
+#       - name: Get Composer Cache Directory
+#         uses: actions/cache@v2
+#         id: composer-cache
+#         with:
+#           path: ./canly/vendor
+#           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+#           restore-keys: |
+#             ${{ runner.os }}-composer-
+#       - name: Copy .env
+#         working-directory: ./canly
+#         run: cp .env.testing .env
+#       - name: Composer install with hirak/prestissimo
+#         working-directory: ./canly
+#         if: steps.composer-cache.outputs.cache-hit != 'true'
+#         run: |
+#           composer config -g repos.packagist composer https://packagist.jp && composer global require hirak/prestissimo
+#           composer install
+#       - name: Generate key
+#         working-directory: ./canly
+#         run: php artisan key:generate
+#       - name: Run migrate
+#         working-directory: ./canly
+#         run: |
+#           php artisan migrate
+#           php artisan db:seed --class=ApiIntegrationTestSeeder
+#         env:
+#           DB_DATABASE: meo_api_testing
+#       # Goでインテグレーションテスト実行
+#       - name: Checkout Canly API Server
+#         uses: actions/checkout@v2
+#         with:
+#           path: ./canly-custom-db-admin-backend-server
+#       - name: Install Go
+#         uses: actions/setup-go@v3
+#         with:
+#           go-version-file: ./canly-custom-db-admin-backend-server/web/go.mod
+#           cache: true
+#           cache-dependency-path: ./canly-custom-db-admin-backend-server/web/go.sum
+#       - name: Download dependencies
+#         working-directory: ./canly-custom-db-admin-backend-server/web
+#         run: go mod download
+#       - name: Copy .env
+#         working-directory: ./canly-custom-db-admin-backend-server/web
+#         run: cp .env.integration.example .env.integration
+#       - name: Install tools
+#         run: |
+#           go install github.com/golang/mock/mockgen@v1.6.0
+#           go install github.com/google/wire/cmd/wire@v0.5.0
+#           go install gotest.tools/gotestsum@v1.8.2
+#         working-directory: ./canly-custom-db-admin-backend-server/web
+#       - name: Clear test cache
+#         working-directory: ./canly-custom-db-admin-backend-server/web
+#         run: go clean -testcache
+#       - name: Test
+#         run: make integration_tests
+#         working-directory: ./canly-custom-db-admin-backend-server/web
+#         env:
+#           MYSQL_HOST: localhost
+#           MYSQL_PORT: 3306
+#           MYSQL_DATABASE: meo_api_testing
